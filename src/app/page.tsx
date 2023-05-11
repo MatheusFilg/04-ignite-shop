@@ -1,95 +1,91 @@
+'use client'
+
+import { stripe } from '@/lib/stripe'
+import { GetServerSideProps } from 'next'
+import { CaretRight } from 'phosphor-react'
+import { useKeenSlider } from 'keen-slider/react'
+
+import camiseta1 from '../assets/Camiseta1.png'
 import Image from 'next/image'
-import styles from './page.module.css'
+import 'keen-slider/keen-slider.min.css'
+import Stripe from 'stripe'
 
-export default function Home() {
+interface HomeProps {
+  products: {
+    id: string
+    name: string
+    imageUrl: string
+    price: number
+  }[]
+}
+
+export default function Home({ products }: HomeProps) {
+  const [sliderRef] = useKeenSlider({
+    slides: {
+      perView: 3,
+      spacing: 48,
+    },
+  })
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <div
+      className="keen-slider flex min-h-[35rem] w-full flex-row"
+      ref={sliderRef}
+    >
+      {products &&
+        products.map((product) => {
+          return (
+            <a
+              key={product.id}
+              className="keen-slider__slide group relative flex cursor-pointer items-center justify-center rounded-lg bg-gradient-to-b from-green3 from-0% to-purple to-100%"
+            >
+              <Image
+                src={camiseta1}
+                alt=""
+                width={520}
+                height={480}
+                className="mb-12 object-cover"
+              />
+              <footer className="absolute bottom-1 left-1 right-1 flex animate-bounce items-center justify-between rounded-md bg-gray2/90 p-8 opacity-0 group-hover:opacity-100">
+                <strong className="text-lg">{product.name}</strong>
+                <span className="text-xl font-bold text-green2">
+                  {product.price}
+                </span>
+              </footer>
+            </a>
+          )
+        })}
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+      <button>
+        <CaretRight size={48} />
+      </button>
+    </div>
   )
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const response = await stripe.products.list({
+    expand: ['data.default_price'],
+    active: true,
+    type: 'service',
+  })
+
+  const products = response.data.map((product) => {
+    const price = product.default_price as Stripe.Price
+    return {
+      id: product.id,
+      name: product.name,
+      imageUrl: product.images[0] || '',
+      price: new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format((price.unit_amount as number) / 100),
+    }
+  })
+
+  return {
+    props: {
+      products,
+    },
+  }
 }
